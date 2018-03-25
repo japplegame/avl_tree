@@ -1,180 +1,185 @@
-defmodule AVLTree do
-  defmodule Less do
-    def less(a, b) do
-      a < b
+defmodule AVLTree.Node do
+  require Record
+
+  Record.defrecord(:tree_node, __MODULE__, value: nil, height: 1, left: nil, right: nil)
+
+  def put(nil, value, _less) do
+    tree_node(value: value)
+  end
+
+  def put(tree_node(value: v, left: l, right: r) = a, value, less) do
+    cond do
+      less.(value, v) ->
+        case put(l, value, less) do
+          {:update, l} -> {:update, tree_node(a, left: l)}
+          l -> balance(tree_node(a, left: l))
+        end
+
+      less.(v, value) ->
+        case put(r, value, less) do
+          {:update, r} -> {:update, tree_node(a, right: r)}
+          r -> balance(tree_node(a, right: r))
+        end
+
+      true ->
+        {:update, tree_node(a, value: value)}
     end
   end
 
-  defmodule Node do
-    defstruct value: nil, left: nil, right: nil, height: 1
+  def put_right(nil, value, _less) do
+    put(nil, value, nil)
+  end
 
-    def put(nil, value, _less) do
-      %Node{value: value}
-    end
-
-    def put(%Node{left: l, right: r} = a, value, less) do
-      cond do
-        less.(value, a.value) ->
-          case put(l, value, less) do
-            {:update, l} -> {:update, %{a | left: l}}
-            l -> balance(%{a | left: l})
-          end
-
-        less.(a.value, value) ->
-          case put(r, value, less) do
-            {:update, r} -> {:update, %{a | right: r}}
-            r -> balance(%{a | right: r})
-          end
-
-        true ->
-          {:update, %{a | value: value}}
-      end
-    end
-
-    def put_right(nil, value, _less) do
-      put(nil, value, nil)
-    end
-
-    def put_right(%Node{left: l, right: r} = a, value, less) do
-      balance(
-        if less.(value, a.value) do
-          %{a | left: put_right(l, value, less)}
-        else
-          %{a | right: put_right(r, value, less)}
-        end
-      )
-    end
-
-    def put_left(nil, value, _less) do
-      put(nil, value, nil)
-    end
-
-    def put_left(%Node{left: l, right: r} = a, value, less) do
-      balance(
-        if less.(a.value, value) do
-          %{a | right: put_left(r, value, less)}
-        else
-          %{a | left: put_left(l, value, less)}
-        end
-      )
-    end
-
-    def get(nil, _value, _less) do
-      nil
-    end
-
-    def get(%Node{left: l, right: r, value: node_value}, value, less) do
-      cond do
-        less.(value, node_value) -> get(l, value, less)
-        less.(node_value, value) -> get(r, value, less)
-        true -> node_value
-      end
-    end
-
-    defp height(nil) do
-      0
-    end
-
-    defp height(%Node{height: height}) do
-      height
-    end
-
-    defp fix_height(%Node{left: left, right: right} = a) do
-      %{a | height: max(height(left), height(right)) + 1}
-    end
-
-    defp rotate_left(%Node{right: %Node{left: c} = b} = a) do
-      fix_height(%{b | left: fix_height(%{a | right: c})})
-    end
-
-    defp rotate_right(%Node{left: %Node{right: c} = b} = a) do
-      fix_height(%{b | right: fix_height(%{a | left: c})})
-    end
-
-    defp big_rotate_left(%Node{right: %Node{} = b} = a) do
-      rotate_left(%{a | right: rotate_right(b)})
-    end
-
-    defp big_rotate_right(%Node{left: %Node{} = b} = a) do
-      rotate_right(%{a | left: rotate_left(b)})
-    end
-
-    defp balance(%Node{} = a) do
-      %{left: l, right: r} = a = fix_height(a)
-
-      cond do
-        height(r) - height(l) == 2 ->
-          if height(r.left) <= height(r.right) do
-            rotate_left(a)
-          else
-            big_rotate_left(a)
-          end
-
-        height(l) - height(r) == 2 ->
-          if height(l.right) <= height(l.left) do
-            rotate_right(a)
-          else
-            big_rotate_right(a)
-          end
-
-        true ->
-          a
-      end
-    end
-
-    defp remove_min(%Node{left: l, right: r} = a) do
-      if l do
-        {m, l} = remove_min(l)
-        {m, balance(%{a | left: l})}
+  def put_right(tree_node(value: v, left: l, right: r) = a, value, less) do
+    balance(
+      if less.(value, v) do
+        tree_node(a, left: put_right(l, value, less))
       else
-        {a, r}
+        tree_node(a, right: put_right(r, value, less))
       end
-    end
+    )
+  end
 
-    defp remove_max(%Node{left: l, right: r} = a) do
-      if r do
-        {m, r} = remove_max(r)
-        {m, balance(%{a | right: r})}
+  def put_left(nil, value, _less) do
+    put(nil, value, nil)
+  end
+
+  def put_left(tree_node(value: v, left: l, right: r) = a, value, less) do
+    balance(
+      if less.(v, value) do
+        tree_node(a, right: put_left(r, value, less))
       else
-        {a, l}
+        tree_node(a, left: put_left(l, value, less))
       end
+    )
+  end
+
+  def get(nil, _value, _less) do
+    nil
+  end
+
+  def get(tree_node(value: v, left: l, right: r), value, less) do
+    cond do
+      less.(value, v) -> get(l, value, less)
+      less.(v, value) -> get(r, value, less)
+      true -> v
     end
+  end
 
-    def remove(nil, _value, _less) do
-      {false, nil}
+  def height(nil) do
+    0
+  end
+
+  def height(tree_node(height: h)) do
+    h
+  end
+
+  defp fix_height(tree_node(left: left, right: right) = a) do
+    tree_node(a, height: max(height(left), height(right)) + 1)
+  end
+
+  defp rotate_left(tree_node(right: tree_node(left: c) = b) = a) do
+    fix_height(tree_node(b, left: fix_height(tree_node(a, right: c))))
+  end
+
+  defp rotate_right(tree_node(left: tree_node(right: c) = b) = a) do
+    fix_height(tree_node(b, right: fix_height(tree_node(a, left: c))))
+  end
+
+  defp big_rotate_left(tree_node(right: b) = a) do
+    rotate_left(tree_node(a, right: rotate_right(b)))
+  end
+
+  defp big_rotate_right(tree_node(left: b) = a) do
+    rotate_right(tree_node(a, left: rotate_left(b)))
+  end
+
+  defp balance(a) do
+    tree_node(left: l, right: r) = a = fix_height(a)
+
+    cond do
+      height(r) - height(l) == 2 ->
+        if height(tree_node(r, :left)) <= height(tree_node(r, :right)) do
+          rotate_left(a)
+        else
+          big_rotate_left(a)
+        end
+
+      height(l) - height(r) == 2 ->
+        if height(tree_node(l, :right)) <= height(tree_node(l, :left)) do
+          rotate_right(a)
+        else
+          big_rotate_right(a)
+        end
+
+      true ->
+        a
     end
+  end
 
-    def remove(%Node{left: l, right: r, value: node_value} = a, value, less) do
-      cond do
-        less.(value, node_value) ->
-          case remove(l, value, less) do
-            {true, l} -> {true, balance(%{a | left: l})}
-            {false, _} -> {false, a}
-          end
+  defp remove_min(tree_node(left: l, right: r) = a) do
+    if l do
+      {m, l} = remove_min(l)
+      {m, balance(tree_node(a, left: l))}
+    else
+      {a, r}
+    end
+  end
 
-        less.(node_value, value) ->
-          case remove(r, value, less) do
-            {true, r} -> {true, balance(%{a | right: r})}
-            {false, _} -> {false, a}
-          end
+  defp remove_max(tree_node(left: l, right: r) = a) do
+    if r do
+      {m, r} = remove_max(r)
+      {m, balance(tree_node(a, right: r))}
+    else
+      {a, l}
+    end
+  end
 
-        true ->
-          if height(r) > height(l) do
-            if r == nil do
-              {true, l}
-            else
-              {a, r} = remove_min(r)
-              {true, balance(%{a | left: l, right: r})}
-            end
+  def remove(nil, _value, _less) do
+    {false, nil}
+  end
+
+  def remove(tree_node(value: v, left: l, right: r) = a, value, less) do
+    cond do
+      less.(value, v) ->
+        case remove(l, value, less) do
+          {true, l} -> {true, balance(tree_node(a, left: l))}
+          {false, _} -> {false, a}
+        end
+
+      less.(v, value) ->
+        case remove(r, value, less) do
+          {true, r} -> {true, balance(tree_node(a, right: r))}
+          {false, _} -> {false, a}
+        end
+
+      true ->
+        if height(r) > height(l) do
+          if r == nil do
+            {true, l}
           else
-            if l == nil do
-              {true, r}
-            else
-              {a, l} = remove_max(l)
-              {true, balance(%{a | left: l, right: r})}
-            end
+            {a, r} = remove_min(r)
+            {true, balance(tree_node(a, left: l, right: r))}
           end
-      end
+        else
+          if l == nil do
+            {true, r}
+          else
+            {a, l} = remove_max(l)
+            {true, balance(tree_node(a, left: l, right: r))}
+          end
+        end
+    end
+  end
+end
+
+defmodule AVLTree do
+  require AVLTree.Node
+  alias AVLTree.Node
+
+  defmodule Less do
+    def less(a, b) do
+      a < b
     end
   end
 
@@ -241,13 +246,13 @@ defmodule AVLTree do
         [nil | p] ->
           reduce(p, {:cont, acc}, fun)
 
-        [%Node{left: l} = c | p] ->
+        [Node.tree_node(left: l) = c | p] ->
           reduce([l, {:left, c} | p], {:cont, acc}, fun)
 
-        [{:left, %Node{right: r, value: v} = c} | p] ->
-          reduce([r, {:right, c} | p], fun.(v, acc), fun)
+        [{:left, Node.tree_node(value: v, right: r)} | p] ->
+          reduce([r, :right | p], fun.(v, acc), fun)
 
-        [{:right, %Node{}} | p] ->
+        [:right | p] ->
           reduce(p, {:cont, acc}, fun)
       end
     end
@@ -276,5 +281,85 @@ defmodule AVLTree do
         end
       }
     end
+  end
+end
+
+defimpl Inspect, for: AVLTree do
+  def inspect(%AVLTree{root: root, size: size}, _) do
+    "#AVLTree<size: #{size}, height: #{AVLTree.Node.height(root)}>"
+  end
+end
+
+defimpl String.Chars, for: AVLTree do
+  import AVLTree.Node, only: [tree_node: 1]
+
+  defp merge(_, _, [], []) do
+    []
+  end
+
+  defp merge(lw, rw, [], [rh | rt]) do
+    [
+      String.duplicate(" ", lw) <> " " <> String.pad_trailing(rh, rw)
+      | merge(lw, rw, [], rt)
+    ]
+  end
+
+  defp merge(lw, rw, [lh | lt], []) do
+    [
+      String.pad_leading(lh, lw) <> " " <> String.duplicate(" ", rw)
+      | merge(lw, rw, lt, [])
+    ]
+  end
+
+  defp merge(lw, rw, [lh | lt], [rh | rt]) do
+    [
+      String.pad_leading(lh, lw) <> " " <> String.pad_trailing(rh, rw)
+      | merge(lw, rw, lt, rt)
+    ]
+  end
+
+  defp node_view(nil) do
+    {1, 0, [" "]}
+  end
+
+  defp node_view(tree_node(value: v, left: nil, right: nil)) do
+    v_str = inspect(v)
+    v_width = String.length(v_str)
+    {v_width, div(v_width, 2), [v_str]}
+  end
+
+  defp node_view(tree_node(value: v, left: l, right: r)) do
+    v_str = inspect(v)
+    v_width = String.length(v_str)
+    v_left_width = div(v_width, 2)
+    v_right_width = v_width - v_left_width - 1
+
+    {l_width, l_head, l_canvas} = node_view(l)
+    {r_width, r_head, r_canvas} = node_view(r)
+
+    left_width = max(v_left_width, l_width)
+    right_width = max(v_right_width, r_width)
+
+    width = left_width + right_width + 1
+
+    left_connector =
+      String.pad_leading("┌" <> String.duplicate("─", l_width - l_head - 1), left_width)
+
+    right_connector = String.pad_trailing(String.duplicate("─", r_head) <> "┐", right_width)
+
+    {
+      width,
+      left_width,
+      [
+        String.pad_trailing(String.pad_leading(v_str, left_width + v_right_width + 1), width),
+        left_connector <> "┴" <> right_connector
+        | merge(left_width, right_width, l_canvas, r_canvas)
+      ]
+    }
+  end
+
+  def to_string(%AVLTree{root: root}) do
+    {_, _, canvas} = node_view(root)
+    Enum.join(canvas, "\n")
   end
 end

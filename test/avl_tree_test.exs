@@ -1,4 +1,4 @@
-defmodule AVLTreeTest1 do
+defmodule AVLTreeTest do
   use ExUnit.Case
   doctest AVLTree
 
@@ -12,84 +12,68 @@ defmodule AVLTreeTest1 do
     assert Enum.zip(tree1, tree2) == [{1, 1}, {3, 2}, {5, 2}, {6, 3}, {7, 4}, {8, 5}, {9, 7}]
   end
 
-  test "put (tree layout)" do
+  test "put" do
     tree = Enum.into([5, 9, 3, 8, 1, 6, 7], AVLTree.new())
     assert Enum.to_list(tree) == [1, 3, 5, 6, 7, 8, 9]
     assert Enum.member?(tree, 3)
     assert !Enum.member?(tree, 2)
 
-    assert match?(
-             %{
-               root: %{
-                 height: 4,
-                 left: %{
-                   height: 2,
-                   left: %{height: 1, left: nil, right: nil, value: 1},
-                   right: nil,
-                   value: 3
-                 },
-                 right: %{
-                   height: 3,
-                   left: %{
-                     height: 2,
-                     left: nil,
-                     right: %{height: 1, left: nil, right: nil, value: 7},
-                     value: 6
-                   },
-                   right: %{height: 1, left: nil, right: nil, value: 9},
-                   value: 8
-                 },
-                 value: 5
-               },
-               size: 7
-             },
-             tree
-           )
+    assert inspect(tree) == "#AVLTree<size: 7, height: 4>"
+
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "   5     ",
+                 " ┌─┴───┐ ",
+                 " 3     8 ",
+                 "┌┴┐  ┌─┴┐",
+                 "1    6  9",
+                 "    ┌┴┐  ",
+                 "      7  "
+               ],
+               "\n"
+             )
 
     tree = Enum.into([11, 10, 12], tree)
+    assert Enum.to_list(tree) == [1, 3, 5, 6, 7, 8, 9, 10, 11, 12]
+    assert inspect(tree) == "#AVLTree<size: 10, height: 4>"
 
-    assert match?(
-             %{
-               root: %{
-                 height: 4,
-                 left: %{
-                   height: 3,
-                   left: %{
-                     height: 2,
-                     left: %{height: 1, left: nil, right: nil, value: 1},
-                     right: nil,
-                     value: 3
-                   },
-                   right: %{
-                     height: 2,
-                     left: nil,
-                     right: %{height: 1, left: nil, right: nil, value: 7},
-                     value: 6
-                   },
-                   value: 5
-                 },
-                 right: %{
-                   height: 3,
-                   left: %{height: 1, left: nil, right: nil, value: 9},
-                   right: %{
-                     height: 2,
-                     left: nil,
-                     right: %{height: 1, left: nil, right: nil, value: 12},
-                     value: 11
-                   },
-                   value: 10
-                 },
-                 value: 8
-               }
-             },
-             tree
-           )
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "       8      ",
+                 "   ┌───┴─┐    ",
+                 "   5    10    ",
+                 " ┌─┴─┐  ┌┴─┐  ",
+                 " 3   6  9 11  ",
+                 "┌┴┐ ┌┴┐   ┌┴─┐",
+                 "1     7     12"
+               ],
+               "\n"
+             )
+
+    tree = AVLTree.put(tree, 4)
+    assert Enum.to_list(tree) == [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    assert inspect(tree) == "#AVLTree<size: 11, height: 4>"
+
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "       8      ",
+                 "   ┌───┴─┐    ",
+                 "   5    10    ",
+                 " ┌─┴─┐  ┌┴─┐  ",
+                 " 3   6  9 11  ",
+                 "┌┴┐ ┌┴┐   ┌┴─┐",
+                 "1 4   7     12"
+               ],
+               "\n"
+             )
 
     assert tree == AVLTree.put(tree, 7)
-    assert Enum.to_list(tree) == [1, 3, 5, 6, 7, 8, 9, 10, 11, 12]
   end
 
-  test "put left/right (tree layout)" do
+  test "put left/right" do
     tree =
       Enum.into(
         [
@@ -102,53 +86,36 @@ defmodule AVLTreeTest1 do
         AVLTree.new(fn {k1, _}, {k2, _} -> k1 < k2 end)
       )
 
-    assert match?(
-             %{
-               root: %{
-                 height: 3,
-                 left: %{
-                   height: 2,
-                   left: nil,
-                   right: %{height: 1, left: nil, right: nil, value: {2, 20}},
-                   value: {1, 10}
-                 },
-                 right: %{
-                   height: 2,
-                   left: %{height: 1, left: nil, right: nil, value: {7, 70}},
-                   right: nil,
-                   value: {9, 90}
-                 },
-                 value: {5, 50}
-               },
-               size: 5
-             },
-             tree
-           )
+    assert Enum.to_list(tree) == [{1, 10}, {2, 20}, {5, 50}, {7, 70}, {9, 90}]
+    assert inspect(tree) == "#AVLTree<size: 5, height: 3>"
+
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "        {5, 50}        ",
+                 "   ┌───────┴───────┐   ",
+                 "{1, 10}         {9, 90}",
+                 "  ┌┴───┐       ┌───┴┐  ",
+                 "    {2, 20} {7, 70}    "
+               ],
+               "\n"
+             )
 
     tree = AVLTree.put(tree, {7, 700})
+    assert Enum.to_list(tree) == [{1, 10}, {2, 20}, {5, 50}, {7, 700}, {9, 90}]
+    assert inspect(tree) == "#AVLTree<size: 5, height: 3>"
 
-    assert match?(
-             %{
-               root: %{
-                 height: 3,
-                 left: %{
-                   height: 2,
-                   left: nil,
-                   right: %{height: 1, left: nil, right: nil, value: {2, 20}},
-                   value: {1, 10}
-                 },
-                 right: %{
-                   height: 2,
-                   left: %{height: 1, left: nil, right: nil, value: {7, 700}},
-                   right: nil,
-                   value: {9, 90}
-                 },
-                 value: {5, 50}
-               },
-               size: 5
-             },
-             tree
-           )
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "        {5, 50}         ",
+                 "   ┌───────┴────────┐   ",
+                 "{1, 10}          {9, 90}",
+                 "  ┌┴───┐        ┌───┴┐  ",
+                 "    {2, 20} {7, 700}    "
+               ],
+               "\n"
+             )
 
     assert AVLTree.put_left(tree, {8, 80}) == AVLTree.put_right(tree, {8, 80})
     assert AVLTree.put_left(tree, {8, 80}) == AVLTree.put(tree, {8, 80})
@@ -168,33 +135,21 @@ defmodule AVLTreeTest1 do
              {9, 90}
            ]
 
-    assert match?(
-             %{
-               root: %{
-                 height: 4,
-                 left: %{
-                   height: 2,
-                   left: nil,
-                   right: %{height: 1, left: nil, right: nil, value: {2, 20}},
-                   value: {1, 10}
-                 },
-                 right: %{
-                   height: 3,
-                   left: %{
-                     height: 2,
-                     left: %{height: 1, left: nil, right: nil, value: {7, 73}},
-                     right: %{height: 1, left: nil, right: nil, value: {7, 71}},
-                     value: {7, 72}
-                   },
-                   right: %{height: 1, left: nil, right: nil, value: {9, 90}},
-                   value: {7, 700}
-                 },
-                 value: {5, 50}
-               },
-               size: 8
-             },
-             tree
-           )
+    assert inspect(tree) == "#AVLTree<size: 8, height: 4>"
+
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "        {5, 50}                    ",
+                 "   ┌───────┴───────────────┐       ",
+                 "{1, 10}                {7, 700}    ",
+                 "  ┌┴───┐           ┌───────┴───┐   ",
+                 "    {2, 20}     {7, 72}     {9, 90}",
+                 "               ┌───┴───┐           ",
+                 "            {7, 73} {7, 71}        "
+               ],
+               "\n"
+             )
 
     tree = AVLTree.put_right(tree, {7, 74})
     tree = AVLTree.put_right(tree, {7, 75})
@@ -214,43 +169,19 @@ defmodule AVLTreeTest1 do
              {9, 90}
            ]
 
-    assert match?(
-             %{
-               root: %{
-                 height: 4,
-                 left: %{
-                   height: 3,
-                   left: %{
-                     height: 2,
-                     left: nil,
-                     right: %{height: 1, left: nil, right: nil, value: {2, 20}},
-                     value: {1, 10}
-                   },
-                   right: %{
-                     height: 2,
-                     left: %{height: 1, left: nil, right: nil, value: {7, 73}},
-                     right: %{height: 1, left: nil, right: nil, value: {7, 71}},
-                     value: {7, 72}
-                   },
-                   value: {5, 50}
-                 },
-                 right: %{
-                   height: 3,
-                   left: %{height: 1, left: nil, right: nil, value: {7, 74}},
-                   right: %{
-                     height: 2,
-                     left: %{height: 1, left: nil, right: nil, value: {7, 76}},
-                     right: nil,
-                     value: {9, 90}
-                   },
-                   value: {7, 75}
-                 },
-                 value: {7, 700}
-               },
-               size: 11
-             },
-             tree
-           )
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "                       {7, 700}                ",
+                 "           ┌───────────────┴───────┐           ",
+                 "        {5, 50}                 {7, 75}        ",
+                 "   ┌───────┴───────┐           ┌───┴───────┐   ",
+                 "{1, 10}         {7, 72}     {7, 74}     {9, 90}",
+                 "  ┌┴───┐       ┌───┴───┐               ┌───┴┐  ",
+                 "    {2, 20} {7, 73} {7, 71}         {7, 76}    "
+               ],
+               "\n"
+             )
   end
 
   test "remove" do
@@ -258,131 +189,108 @@ defmodule AVLTreeTest1 do
     assert match?({false, ^tree}, AVLTree.remove(tree, 4))
     {true, tree} = AVLTree.remove(tree, 3)
 
-    assert match?(
-             %{
-               root: %{
-                 height: 3,
-                 left: %{
-                   height: 2,
-                   left: %{height: 1, left: nil, right: nil, value: 1},
-                   right: nil,
-                   value: 5
-                 },
-                 right: %{
-                   height: 2,
-                   left: %{height: 1, left: nil, right: nil, value: 7},
-                   right: %{height: 1, left: nil, right: nil, value: 9},
-                   value: 8
-                 },
-                 value: 6
-               },
-               size: 6
-             },
-             tree
-           )
-
     assert Enum.to_list(tree) == [1, 5, 6, 7, 8, 9]
+    assert inspect(tree) == "#AVLTree<size: 6, height: 3>"
+
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "   6   ",
+                 " ┌─┴─┐ ",
+                 " 5   8 ",
+                 "┌┴┐ ┌┴┐",
+                 "1   7 9"
+               ],
+               "\n"
+             )
 
     {true, tree} = AVLTree.remove(tree, 1)
-
-    assert match?(
-             %{
-               root: %{
-                 height: 3,
-                 left: %{height: 1, left: nil, right: nil, value: 5},
-                 right: %{
-                   height: 2,
-                   left: %{height: 1, left: nil, right: nil, value: 7},
-                   right: %{height: 1, left: nil, right: nil, value: 9},
-                   value: 8
-                 },
-                 value: 6
-               },
-               size: 5
-             },
-             tree
-           )
-
     assert Enum.to_list(tree) == [5, 6, 7, 8, 9]
+    assert inspect(tree) == "#AVLTree<size: 5, height: 3>"
+
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 " 6   ",
+                 "┌┴─┐ ",
+                 "5  8 ",
+                 "  ┌┴┐",
+                 "  7 9"
+               ],
+               "\n"
+             )
 
     {true, tree} = AVLTree.remove(tree, 8)
-
-    assert match?(
-             %{
-               root: %{
-                 height: 3,
-                 left: %{height: 1, left: nil, right: nil, value: 5},
-                 right: %{
-                   height: 2,
-                   left: nil,
-                   right: %{height: 1, left: nil, right: nil, value: 9},
-                   value: 7
-                 },
-                 value: 6
-               },
-               size: 4
-             },
-             tree
-           )
-
     assert Enum.to_list(tree) == [5, 6, 7, 9]
+    assert inspect(tree) == "#AVLTree<size: 4, height: 3>"
+
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 " 6   ",
+                 "┌┴─┐ ",
+                 "5  7 ",
+                 "  ┌┴┐",
+                 "    9"
+               ],
+               "\n"
+             )
 
     tree = Enum.into([3, 1, 2, 4, 8, 0], tree)
     assert Enum.to_list(tree) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    assert inspect(tree) == "#AVLTree<size: 10, height: 4>"
+
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "       6   ",
+                 "   ┌───┴─┐ ",
+                 "   3     8 ",
+                 " ┌─┴─┐  ┌┴┐",
+                 " 1   5  7 9",
+                 "┌┴┐ ┌┴┐    ",
+                 "0 2 4      "
+               ],
+               "\n"
+             )
 
     {true, tree1} = AVLTree.remove(tree, 6)
     assert Enum.to_list(tree1) == [0, 1, 2, 3, 4, 5, 7, 8, 9]
+    assert inspect(tree1) == "#AVLTree<size: 9, height: 4>"
+
+    assert to_string(tree1) ==
+             Enum.join(
+               [
+                 "     5   ",
+                 "   ┌─┴─┐ ",
+                 "   3   8 ",
+                 " ┌─┴┐ ┌┴┐",
+                 " 1  4 7 9",
+                 "┌┴┐      ",
+                 "0 2      "
+               ],
+               "\n"
+             )
 
     tree = Enum.into([0, 3, 2, 1, 4, 8, 7, 9, 5, 6, 11, 12, 10, 14, 13, 15], AVLTree.new())
     {true, tree} = AVLTree.remove(tree, 4)
     assert Enum.to_list(tree) == [0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    assert inspect(tree) == "#AVLTree<size: 15, height: 5>"
 
-    assert match?(
-             %{
-               root: %{
-                 height: 5,
-                 left: %{
-                   height: 3,
-                   left: %{
-                     height: 2,
-                     left: nil,
-                     right: %{height: 1, left: nil, right: nil, value: 1},
-                     value: 0
-                   },
-                   right: %{height: 1, left: nil, right: nil, value: 3},
-                   value: 2
-                 },
-                 right: %{
-                   height: 4,
-                   left: %{
-                     height: 3,
-                     left: %{height: 1, left: nil, right: nil, value: 6},
-                     right: %{
-                       height: 2,
-                       left: %{height: 1, left: nil, right: nil, value: 8},
-                       right: %{height: 1, left: nil, right: nil, value: 10},
-                       value: 9
-                     },
-                     value: 7
-                   },
-                   right: %{
-                     height: 3,
-                     left: %{height: 1, left: nil, right: nil, value: 12},
-                     right: %{
-                       height: 2,
-                       left: nil,
-                       right: %{height: 1, left: nil, right: nil, value: 15},
-                       value: 14
-                     },
-                     value: 13
-                   },
-                   value: 11
-                 },
-                 value: 5
-               },
-               size: 15
-             },
-             tree
-           )
+    assert to_string(tree) ==
+             Enum.join(
+               [
+                 "     5              ",
+                 "   ┌─┴──────┐       ",
+                 "   2       11       ",
+                 " ┌─┴┐  ┌────┴──┐    ",
+                 " 0  3  7      13    ",
+                 "┌┴┐   ┌┴─┐    ┌┴─┐  ",
+                 "  1   6  9   12 14  ",
+                 "        ┌┴─┐    ┌┴─┐",
+                 "        8 10      15"
+               ],
+               "\n"
+             )
   end
 end
