@@ -26,30 +26,30 @@ defmodule AVLTree.Node do
     end
   end
 
-  def put_right(nil, value, _less) do
+  def put_upper(nil, value, _less) do
     put(nil, value, nil)
   end
 
-  def put_right(tree_node(value: v, left: l, right: r) = a, value, less) do
+  def put_upper(tree_node(value: v, left: l, right: r) = a, value, less) do
     balance(
       if less.(value, v) do
-        tree_node(a, left: put_right(l, value, less))
+        tree_node(a, left: put_upper(l, value, less))
       else
-        tree_node(a, right: put_right(r, value, less))
+        tree_node(a, right: put_upper(r, value, less))
       end
     )
   end
 
-  def put_left(nil, value, _less) do
+  def put_lower(nil, value, _less) do
     put(nil, value, nil)
   end
 
-  def put_left(tree_node(value: v, left: l, right: r) = a, value, less) do
+  def put_lower(tree_node(value: v, left: l, right: r) = a, value, less) do
     balance(
       if less.(v, value) do
-        tree_node(a, right: put_left(r, value, less))
+        tree_node(a, right: put_lower(r, value, less))
       else
-        tree_node(a, left: put_left(l, value, less))
+        tree_node(a, left: put_lower(l, value, less))
       end
     )
   end
@@ -63,6 +63,24 @@ defmodule AVLTree.Node do
       less.(value, v) -> get(l, value, less)
       less.(v, value) -> get(r, value, less)
       true -> v
+    end
+  end
+
+  def get_lower(nil), do: nil
+
+  def get_lower(tree_node(value: v, left: l)) do
+    case l do
+      nil -> v
+      _ -> get_lower(l)
+    end
+  end
+
+  def get_upper(nil), do: nil
+
+  def get_upper(tree_node(value: v, right: r)) do
+    case r do
+      nil -> v
+      _ -> get_upper(r)
     end
   end
 
@@ -197,6 +215,14 @@ defmodule AVLTree do
     Node.get(root, value, less)
   end
 
+  def get_lower(%AVLTree{root: root}) do
+    Node.get_lower(root)
+  end
+
+  def get_upper(%AVLTree{root: root}) do
+    Node.get_upper(root)
+  end
+
   def has_value(%AVLTree{} = tree, value) do
     get(tree, value) != nil
   end
@@ -208,12 +234,12 @@ defmodule AVLTree do
     end
   end
 
-  def put_left(%AVLTree{root: root, size: size, less: less} = tree, value) do
-    %{tree | root: Node.put_left(root, value, less), size: size + 1}
+  def put_lower(%AVLTree{root: root, size: size, less: less} = tree, value) do
+    %{tree | root: Node.put_lower(root, value, less), size: size + 1}
   end
 
-  def put_right(%AVLTree{root: root, size: size, less: less} = tree, value) do
-    %{tree | root: Node.put_right(root, value, less), size: size + 1}
+  def put_upper(%AVLTree{root: root, size: size, less: less} = tree, value) do
+    %{tree | root: Node.put_upper(root, value, less), size: size + 1}
   end
 
   def remove(%AVLTree{root: root, size: size, less: less} = tree, value) do
@@ -275,7 +301,7 @@ defmodule AVLTree do
       {
         original,
         fn
-          tree, {:cont, value} -> AVLTree.put_right(tree, value)
+          tree, {:cont, value} -> AVLTree.put_upper(tree, value)
           tree, :done -> tree
           _, :halt -> :ok
         end

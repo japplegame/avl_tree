@@ -37,6 +37,9 @@ AVLTree.has_value(tree, 9) # false
 
 Enum.member?(tree, 4) # true
 Enum.member?(tree, 9) # false
+
+AVLTree.get_lower(tree) # 1
+AVLTree.get_upper(tree) # 10
 ```
 #### Removing
 ```elixir
@@ -53,11 +56,11 @@ IO.puts(to_string(tree))
 ```
 output:
 ```
-   3        
- ┌─┴───┐    
- 2     6    
-┌┴┐  ┌─┴─┐  
-1    5   8  
+   3
+ ┌─┴───┐
+ 2     6
+┌┴┐  ┌─┴─┐
+1    5   8
     ┌┴┐ ┌┴─┐
     4   7 10
 ```
@@ -74,15 +77,15 @@ Enum.to_list(tree) # [{3, "val 3"}, {2, "val 2"}, {1, "val 1"}]
 ```
 #### Inserting values with duplicate key field
 ```elixir
-tree = AVLTree.put_left(tree, {2, "val 2.1"})
+tree = AVLTree.put_lower(tree, {2, "val 2.1"})
 #AVLTree<size: 4, height: 3>
 
 Enum.to_list(tree)
 # [{3, "val 3"}, {2, "val 2.1"}, {2, "val 2"}, {1, "val 1"}]
 
-tree = AVLTree.put_right(tree, {2, "val 2.2"})
+tree = AVLTree.put_upper(tree, {2, "val 2.2"})
 #AVLTree<size: 5, height: 3>
 
-Enum.to_list(tree)                            
+Enum.to_list(tree)
 # [{3, "val 3"}, {2, "val 2.1"}, {2, "val 2"}, {2, "val 2.2"}, {1, "val 1"}]
 ```

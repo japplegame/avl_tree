@@ -73,7 +73,27 @@ defmodule AVLTreeTest do
     assert tree == AVLTree.put(tree, 7)
   end
 
-  test "put left/right" do
+  test "get" do
+    tree =
+      Enum.into(
+        [
+          {1, 10},
+          {5, 50},
+          {9, 90},
+          {7, 70},
+          {2, 20}
+        ],
+        AVLTree.new(fn {k1, _}, {k2, _} -> k1 < k2 end)
+      )
+
+    assert AVLTree.get(tree, {7, nil}) == {7, 70}
+    assert AVLTree.get(tree, {5, nil}) == {5, 50}
+
+    assert AVLTree.get_lower(tree) == {1, 10}
+    assert AVLTree.get_upper(tree) == {9, 90}
+  end
+
+  test "put lower/upper" do
     tree =
       Enum.into(
         [
@@ -117,12 +137,12 @@ defmodule AVLTreeTest do
                "\n"
              )
 
-    assert AVLTree.put_left(tree, {8, 80}) == AVLTree.put_right(tree, {8, 80})
-    assert AVLTree.put_left(tree, {8, 80}) == AVLTree.put(tree, {8, 80})
+    assert AVLTree.put_lower(tree, {8, 80}) == AVLTree.put_upper(tree, {8, 80})
+    assert AVLTree.put_lower(tree, {8, 80}) == AVLTree.put(tree, {8, 80})
 
-    tree = AVLTree.put_left(tree, {7, 71})
-    tree = AVLTree.put_left(tree, {7, 72})
-    tree = AVLTree.put_left(tree, {7, 73})
+    tree = AVLTree.put_lower(tree, {7, 71})
+    tree = AVLTree.put_lower(tree, {7, 72})
+    tree = AVLTree.put_lower(tree, {7, 73})
 
     assert Enum.to_list(tree) == [
              {1, 10},
@@ -151,9 +171,9 @@ defmodule AVLTreeTest do
                "\n"
              )
 
-    tree = AVLTree.put_right(tree, {7, 74})
-    tree = AVLTree.put_right(tree, {7, 75})
-    tree = AVLTree.put_right(tree, {7, 76})
+    tree = AVLTree.put_upper(tree, {7, 74})
+    tree = AVLTree.put_upper(tree, {7, 75})
+    tree = AVLTree.put_upper(tree, {7, 76})
 
     assert Enum.to_list(tree) == [
              {1, 10},
