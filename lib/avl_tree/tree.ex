@@ -309,8 +309,6 @@ defmodule AVLTree do
   end
 
   defimpl Enumerable do
-    alias AVLTree.Node
-
     def reduce(%AVLTree{root: root}, {:cont, acc}, fun) do
       reduce([root], {:cont, acc}, fun)
     end
@@ -331,10 +329,10 @@ defmodule AVLTree do
         [nil | p] ->
           reduce(p, {:cont, acc}, fun)
 
-        [Node.tree_node(left: l) = c | p] ->
+        [{_v, _h, l, _r} = c | p] ->
           reduce([l, {:left, c} | p], {:cont, acc}, fun)
 
-        [{:left, Node.tree_node(value: v, right: r)} | p] ->
+        [{:left, {v, _h, _l, r}} | p] ->
           reduce([r, :right | p], fun.(v, acc), fun)
 
         [:right | p] ->
@@ -379,8 +377,6 @@ defimpl Inspect, for: AVLTree do
 end
 
 defimpl String.Chars, for: AVLTree do
-  import AVLTree.Node, only: [tree_node: 1]
-
   defp merge(_, _, [], []) do
     []
   end
@@ -410,13 +406,13 @@ defimpl String.Chars, for: AVLTree do
     {1, 0, [" "]}
   end
 
-  defp node_view(tree_node(value: v, left: nil, right: nil)) do
+  defp node_view({v, _, nil, nil}) do
     v_str = inspect(v)
     v_width = String.length(v_str)
     {v_width, div(v_width, 2), [v_str]}
   end
 
-  defp node_view(tree_node(value: v, left: l, right: r)) do
+  defp node_view({v, _h, l, r}) do
     v_str = inspect(v)
     v_width = String.length(v_str)
     v_left_width = div(v_width, 2)
