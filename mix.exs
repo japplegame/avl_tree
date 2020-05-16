@@ -4,9 +4,10 @@ defmodule AvlTree.MixProject do
   def project do
     [
       app: :avl_tree,
-      version: "0.1.0",
+      version: "1.1.0",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
+      description: "Pure Elixir AVL tree implementation",
       deps: deps()
     ]
   end
@@ -19,7 +20,8 @@ defmodule AvlTree.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:benchee, "~> 1.0", only: :bench}
+      {:benchee, "~> 1.0", only: :dev},
+      {:ex_doc, "~> 0.22", only: :dev}
     ]
   end
 end

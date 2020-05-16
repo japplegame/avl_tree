@@ -32,8 +32,8 @@ Enum.to_list(tree) # [1, 2, 3, 4, 5, 6, 7, 8, 10]
 AVLTree.get(tree, 4) # 4
 AVLTree.get(tree, 9) # nil
 
-AVLTree.has_value(tree, 4) # true
-AVLTree.has_value(tree, 9) # false
+AVLTree.member?(tree, 4) # true
+AVLTree.member?(tree, 9) # false
 
 Enum.member?(tree, 4) # true
 Enum.member?(tree, 9) # false
@@ -41,12 +41,12 @@ Enum.member?(tree, 9) # false
 AVLTree.get_lower(tree) # 1
 AVLTree.get_upper(tree) # 10
 ```
-#### Removing
+#### Deleting
 ```elixir
-{true, tree} = AVLTree.remove(tree, 8) # {true, #AVLTree<size: 8, height: 4>}
+{true, tree} = AVLTree.delete(tree, 8) # {true, #AVLTree<size: 8, height: 4>}
 Enum.to_list(tree) # [1, 2, 3, 4, 5, 6, 7, 10]
 
-{false, tree} = AVLTree.remove(tree, 9) # {false, #AVLTree<size: 8, height: 4>}
+{false, tree} = AVLTree.delete(tree, 9) # {false, #AVLTree<size: 8, height: 4>}
 Enum.to_list(tree) # [1, 2, 3, 4, 5, 6, 7, 10]
 ```
 

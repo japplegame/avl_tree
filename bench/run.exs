@@ -1,58 +1,71 @@
 defmodule Bench do
-  @elements 100_000
-  @time 10
-
-  def get_data(number) do
-    get_data([], 1..number |> Enum.map(fn x -> {x, x} end) |> Enum.into(%{}))
-  end
-
-  def get_data(result, map) do
-    if map_size(map) == 0 do
-      result
-    else
-      s = map_size(map)
-      n = :rand.uniform(s)
-      get_data([map[n] | result], map |> Map.put(n, map[s]) |> Map.delete(s))
-    end
-  end
-
-  def run() do
+  def run(size) do
+    IO.puts("============ #{size} elements ============\n")
     :rand.seed(:exrop, {1, 2, 3})
-    data1 = get_data(@elements)
-    data2 = get_data(@elements)
-    set = Enum.reduce(data1, MapSet.new(), fn x, set -> MapSet.put(set, x) end)
-    tree = Enum.reduce(data1, AVLTree.new(), fn x, tree -> AVLTree.put(tree, x) end)
+    data = Enum.shuffle(1..size)
+    set = Enum.reduce(data, MapSet.new(), fn x, set -> MapSet.put(set, x) end)
+    tree = Enum.reduce(data, AVLTree.new(), fn x, tree -> AVLTree.put(tree, x) end)
 
-    IO.puts("Memory consumtion:\n")
-    IO.puts("  MapSet:  #{:erts_debug.flat_size(set) - @elements}")
-    IO.puts("  AVLTree: #{:erts_debug.flat_size(tree) - @elements}\n")
+    IO.puts("Flat size (bytes):")
+    IO.puts("MapSet:  #{:erts_debug.flat_size(set) - size}")
+    IO.puts("AVLTree: #{:erts_debug.flat_size(tree) - size}")
+
+    gen_element = fn _ -> :rand.uniform(size * 2) end
+
+    IO.puts("\n============ SEARCH ============")
 
     Benchee.run(
       %{
-        "MapSet INSERT" => fn ->
-          Enum.reduce(data1, MapSet.new(), fn x, set -> MapSet.put(set, x) end)
-        end,
-        "AVLTree INSERT" => fn ->
-          Enum.reduce(data1, AVLTree.new(), fn x, tree -> AVLTree.put(tree, x) end)
-        end
+        "MapSet SEARCH" => fn x -> MapSet.member?(set, x) end,
+        "AVLTree SEARCH" => fn x -> AVLTree.member?(tree, x) end
       },
-      time: @time
+      before_each: gen_element,
+      time: 5,
+      print: %{
+        benchmarking: false,
+        configuration: false
+      }
     )
 
-    IO.puts("\n")
+    IO.puts("\n============ INSERT ============")
 
     Benchee.run(
       %{
-        "MapSet SEARCH" => fn ->
-          Enum.each(data2, fn x -> MapSet.member?(set, x) end)
-        end,
-        "AVLTree SEARCH" => fn ->
-          Enum.each(data2, fn x -> AVLTree.member?(tree, x) end)
-        end
+        "MapSet INSERT" => fn x -> MapSet.put(set, x) end,
+        "AVLTree INSERT" => fn x -> AVLTree.put(tree, x) end
       },
-      time: 10
+      before_each: gen_element,
+      time: 5,
+      print: %{
+        benchmarking: false,
+        configuration: false
+      }
+    )
+
+    IO.puts("\n============ DELETE ============")
+
+    Benchee.run(
+      %{
+        "MapSet DELETE" => fn x -> MapSet.delete(set, x) end,
+        "AVLTree DELETE" => fn x -> AVLTree.delete(tree, x) end
+      },
+      before_each: gen_element,
+      time: 5,
+      print: %{
+        benchmarking: false,
+        configuration: false
+      }
     )
   end
 end
 
-Bench.run()
+case System.argv() do
+  [a | _] ->
+    case Integer.parse(a) do
+      {n, ""} -> Bench.run(n)
+      _ -> IO.puts("integer expected")
+    end
+
+  _ ->
+    Bench.run(100_000)
+end
