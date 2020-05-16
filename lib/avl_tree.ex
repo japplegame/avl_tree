@@ -223,7 +223,12 @@ defmodule AVLTree do
     Node.get_upper(root)
   end
 
+  @deprecated "Use member?/1 instead"
   def has_value(%AVLTree{} = tree, value) do
+    get(tree, value) != nil
+  end
+
+  def member?(%AVLTree{} = tree, value) do
     get(tree, value) != nil
   end
 

@@ -19,7 +19,7 @@ defmodule AvlTree.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:benchee, "~> 0.12.0", only: :bench}
+      {:benchee, "~> 1.0", only: :bench}
     ]
   end
 end
