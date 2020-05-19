@@ -4,11 +4,19 @@ defmodule AvlTree.MixProject do
   def project do
     [
       app: :avl_tree,
-      version: "1.1.0",
+      version: "1.0.0",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
+      name: "AVLTree",
       description: "Pure Elixir AVL tree implementation",
-      deps: deps()
+      deps: deps(),
+      docs: [extras: ["README.md"]],
+      package: [
+        maintainers: ["Jack Applegame"],
+        licenses: ["MIT"],
+        links: %{"GitHub" => "https://github.com/japplegame/avl_tree"},
+        files: ["lib", "test", "bench", "mix.exs", "README.md", "LICENSE"]
+      ]
     ]
   end
 

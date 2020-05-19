@@ -1,9 +1,17 @@
 defmodule AVLTree.Node do
   @moduledoc false
 
-  def put(nil, value, _less) do
-    {value, 1, nil, nil}
-  end
+  @compile {:inline,
+            value: 1,
+            height: 1,
+            fix_height: 1,
+            rotate_left: 1,
+            rotate_right: 1,
+            big_rotate_left: 1,
+            big_rotate_right: 1,
+            balance: 1}
+
+  def put(nil, value, _less), do: {value, 1, nil, nil}
 
   def put({v, h, l, r}, value, less) do
     cond do
@@ -24,23 +32,7 @@ defmodule AVLTree.Node do
     end
   end
 
-  def put_upper(nil, value, _less) do
-    put(nil, value, nil)
-  end
-
-  def put_upper({v, h, l, r}, value, less) do
-    balance(
-      if less.(value, v) do
-        {v, h, put_upper(l, value, less), r}
-      else
-        {v, h, l, put_upper(r, value, less)}
-      end
-    )
-  end
-
-  def put_lower(nil, value, _less) do
-    put(nil, value, nil)
-  end
+  def put_lower(nil, value, _less), do: {value, 1, nil, nil}
 
   def put_lower({v, h, l, r}, value, less) do
     balance(
@@ -52,42 +44,172 @@ defmodule AVLTree.Node do
     )
   end
 
-  def get(nil, _value, _less) do
-    nil
+  def put_upper(nil, value, _less), do: {value, 1, nil, nil}
+
+  def put_upper({v, h, l, r}, value, less) do
+    balance(
+      if less.(value, v) do
+        {v, h, put_upper(l, value, less), r}
+      else
+        {v, h, l, put_upper(r, value, less)}
+      end
+    )
   end
 
-  def get({v, _h, l, r}, value, less) do
+  def member?(nil, _value, _less), do: false
+
+  def member?({v, _h, l, r}, value, less) do
     cond do
-      less.(value, v) -> get(l, value, less)
-      less.(v, value) -> get(r, value, less)
+      less.(value, v) -> member?(l, value, less)
+      less.(v, value) -> member?(r, value, less)
+      true -> true
+    end
+  end
+
+  def get(nil, _value, default, _less), do: default
+
+  def get({v, _h, l, r}, value, default, less) do
+    cond do
+      less.(value, v) -> get(l, value, default, less)
+      less.(v, value) -> get(r, value, default, less)
       true -> v
     end
   end
 
-  def get_lower(nil), do: nil
+  def get_first(nil, default), do: default
+  def get_first({v, _h, nil, _r}, _default), do: v
+  def get_first({_v, _h, l, _r}, default), do: get_first(l, default)
 
-  def get_lower({v, _h, l, _r}) do
-    case l do
-      nil -> v
-      _ -> get_lower(l)
+  def get_last(nil, default), do: default
+  def get_last({v, _h, _l, nil}, _default), do: v
+  def get_last({_v, _h, _l, r}, default), do: get_last(r, default)
+
+  def get_lower(nil, _value, default, _less), do: default
+
+  def get_lower({v, _h, l, r}, value, default, less) do
+    case less.(v, value) do
+      true ->
+        get_lower(r, value, default, less)
+
+      false ->
+        case get_lower(l, value, default, less) do
+          nil ->
+            case less.(value, v) do
+              true -> default
+              false -> v
+            end
+
+          value ->
+            value
+        end
     end
   end
 
-  def get_upper(nil), do: nil
+  def get_upper(nil, _value, default, _less), do: default
 
-  def get_upper({v, _h, _l, r}) do
-    case r do
-      nil -> v
-      _ -> get_upper(r)
+  def get_upper({v, _h, l, r}, value, default, less) do
+    case less.(value, v) do
+      true ->
+        get_upper(l, value, default, less)
+
+      false ->
+        case get_upper(r, value, default, less) do
+          nil ->
+            case less.(v, value) do
+              true -> default
+              false -> v
+            end
+
+          value ->
+            value
+        end
     end
   end
 
-  def height(nil) do
-    0
+  def height(nil), do: 0
+  def height({_v, h, _l, _r}), do: h
+  def value({v, _h, _l, _r}), do: v
+
+  def delete(nil, _value, _less), do: {false, nil}
+
+  def delete({v, h, l, r} = a, value, less) do
+    cond do
+      less.(value, v) ->
+        case delete(l, value, less) do
+          {true, l} -> {true, balance({v, h, l, r})}
+          {false, _} -> {false, a}
+        end
+
+      less.(v, value) ->
+        case delete(r, value, less) do
+          {true, r} -> {true, balance({v, h, l, r})}
+          {false, _} -> {false, a}
+        end
+
+      true ->
+        {true, delete_node(a)}
+    end
   end
 
-  def height({_v, h, _l, _r}) do
-    h
+  def delete_lower(nil, _value, _less), do: {false, nil}
+
+  def delete_lower({v, h, l, r} = a, value, less) do
+    case less.(v, value) do
+      true ->
+        case delete_lower(r, value, less) do
+          {true, r} -> {true, balance({v, h, l, r})}
+          {false, _} -> {false, a}
+        end
+
+      false ->
+        case delete_lower(l, value, less) do
+          {true, l} ->
+            {true, balance({v, h, l, r})}
+
+          {false, _} ->
+            case less.(value, v) do
+              true -> {false, a}
+              false -> {true, delete_node(a)}
+            end
+        end
+    end
+  end
+
+  def delete_upper(nil, _value, _less), do: {false, nil}
+
+  def delete_upper({v, h, l, r} = a, value, less) do
+    case less.(value, v) do
+      true ->
+        case delete_upper(l, value, less) do
+          {true, l} -> {true, balance({v, h, l, r})}
+          {false, _} -> {false, a}
+        end
+
+      false ->
+        case delete_upper(r, value, less) do
+          {true, r} ->
+            {true, balance({v, h, l, r})}
+
+          {false, _} ->
+            case less.(v, value) do
+              true -> {false, a}
+              false -> {true, delete_node(a)}
+            end
+        end
+    end
+  end
+
+  def iter_lower(root), do: iter_lower_impl(root, [])
+
+  def iter_lower_impl({_v, _h, l, _r} = a, iter), do: iter_lower_impl(l, [a | iter])
+  def iter_lower_impl(nil, iter), do: iter
+
+  def next([{_v, _h, _, r} = n | tail]), do: {n, iter_lower_impl(r, tail)}
+  def next([]), do: :none
+
+  def view(root) do
+    {_, _, canvas} = __MODULE__.View.node_view(root)
+    Enum.join(canvas, "\n")
   end
 
   defp fix_height({v, _h, l, r}) do
@@ -138,6 +260,20 @@ defmodule AVLTree.Node do
     end
   end
 
+  defp delete_node({_v, _h, l, r}) do
+    if height(r) > height(l) do
+      {{v, h, _l, _r}, r} = delete_min(r)
+      balance({v, h, l, r})
+    else
+      if l == nil do
+        r
+      else
+        {{v, h, _l, _r}, l} = delete_max(l)
+        balance({v, h, l, r})
+      end
+    end
+  end
+
   defp delete_min({v, h, l, r} = a) do
     if l do
       {m, l} = delete_min(l)
@@ -153,43 +289,6 @@ defmodule AVLTree.Node do
       {m, balance({v, h, l, r})}
     else
       {a, l}
-    end
-  end
-
-  def delete(nil, _value, _less) do
-    {false, nil}
-  end
-
-  def delete({v, h, l, r} = a, value, less) do
-    cond do
-      less.(value, v) ->
-        case delete(l, value, less) do
-          {true, l} -> {true, balance({v, h, l, r})}
-          {false, _} -> {false, a}
-        end
-
-      less.(v, value) ->
-        case delete(r, value, less) do
-          {true, r} -> {true, balance({v, h, l, r})}
-          {false, _} -> {false, a}
-        end
-
-      true ->
-        if height(r) > height(l) do
-          if r == nil do
-            {true, l}
-          else
-            {{v, h, _l, _r}, r} = delete_min(r)
-            {true, balance({v, h, l, r})}
-          end
-        else
-          if l == nil do
-            {true, r}
-          else
-            {{v, h, _l, _r}, l} = delete_max(l)
-            {true, balance({v, h, l, r})}
-          end
-        end
     end
   end
 end

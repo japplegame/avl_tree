@@ -1,91 +1,153 @@
-# AVL Tree
+# AVLTree
 
 Pure Elixir [AVL tree](https://en.wikipedia.org/wiki/AVL_tree) implementation.
 
-Features:
-- custom comparison function
-- `Collectable`, `Enumerable`, `Inspect`, `String.Chars` protocols
-- human readable visualization
+This data structure is very similar to `MapSet`, but unlike the latter,
+elements in the `AVLTree` are always sorted in ascending or descending order.
 
-## Usage
-### Default comparsion function (`a < b` - ascending order)
-#### Inserting individual values
+To sort items, `AVLTree` uses a comparison function that looks like:
+
+`less(a, b) :: boolean`
+
+This function returns `true` if element `a` must be placed strictly before element `b`, otherwise it returns false.
+
+`AVLTree` can store duplicate elements.
+It is important to understand that duplicate elements are not necessarily the same.
+
+Values `a` and `b` are considered equal if they satisfy the following condition:
+
+`less(a, b) == false and less(b, a) == false`, where `less(x, y)` is comparison function
+
+For example, if the comparison function is `fn {a, _}, {b, _} -> a < b end`,
+then the elements `{1, 10}` and `{1, 20}` are considered equal, although actually they aren't.
+
+By default, comparison function is `Kernel.</2`.
+
+## Features
+
+- custom comparison function;
+- support for duplicate elements;
+- `Collectable`, `Enumerable`, `Inspect` protocols;
+- drawing the tree in the console :)
+
+## Basic Usage
+
+By default, inserted elements are sorted in ascending order:
+
 ```elixir
-tree = AVLTree.new()
-
-tree = tree
-  |> AVLTree.put(2)
-  |> AVLTree.put(1)
-  |> AVLTree.put(3)
-# #AVLTree<size: 3, height: 2>
-
-Enum.to_list(tree) # [1, 2, 3]
+iex> tree = AVLTree.new()
+#AVLTree<[]>
+iex> tree = AVLTree.put(tree, 5)
+iex> tree = AVLTree.put(tree, 2)
+iex> tree = [1, 3, 6, 4] |> Enum.into(tree)
+iex> tree
+#AVLTree<[1, 2, 3, 4, 5, 6]>
 ```
-#### Inserting list of values
+
+You can specify ordering when creating a tree:
+
 ```elixir
-tree = Enum.into([10, 8, 4, 6, 5, 7], tree) # #AVLTree<size: 9, height: 4>
-
-Enum.to_list(tree) # [1, 2, 3, 4, 5, 6, 7, 8, 10]
+iex> tree1 = AVLTree.new(:asc)
+iex> tree2 = AVLTree.new(:desc)
+iex> [4, 2, 1, 3] |> Enum.into(tree1)
+#AVLTree<[1, 2, 3, 4]>
+iex> [4, 2, 1, 3] |> Enum.into(tree2)
+#AVLTree<[4, 3, 2, 1]>
 ```
-#### Searching
+
+Also you can use a custom comparison function.
+
+Example of a tree with tuples as elements, ordered by the first field
+
 ```elixir
-AVLTree.get(tree, 4) # 4
-AVLTree.get(tree, 9) # nil
-
-AVLTree.member?(tree, 4) # true
-AVLTree.member?(tree, 9) # false
-
-Enum.member?(tree, 4) # true
-Enum.member?(tree, 9) # false
-
-AVLTree.get_lower(tree) # 1
-AVLTree.get_upper(tree) # 10
+iex> tree = AVLTree.new(fn {a, _}, {b, _} -> a < b end)
+iex> [{2, "A"}, {3, "B"}, {1, "C"}] |> Enum.into(tree)
+#AVLTree<[{1, "C"}, {2, "A"}, {3, "B"}]>
 ```
-#### Deleting
+
+Checks if the tree contains a value
+
 ```elixir
-{true, tree} = AVLTree.delete(tree, 8) # {true, #AVLTree<size: 8, height: 4>}
-Enum.to_list(tree) # [1, 2, 3, 4, 5, 6, 7, 10]
-
-{false, tree} = AVLTree.delete(tree, 9) # {false, #AVLTree<size: 8, height: 4>}
-Enum.to_list(tree) # [1, 2, 3, 4, 5, 6, 7, 10]
+iex> tree = [5, 2, 1, 3] |> Enum.into(AVLTree.new())
+iex> AVLTree.member?(tree, 2)
+true
 ```
 
-#### Visualization
+`AVLTree` fully supports `Enumerable` protocol
+
 ```elixir
-IO.puts(to_string(tree))
+iex> tree = [4, 2, 1, 3] |> Enum.into(AVLTree.new())
+iex> Enum.to_list(tree)
+[1, 2, 3, 4]
+iex> Enum.sum(tree)
+10
 ```
-output:
-```
-   3
- ┌─┴───┐
- 2     6
-┌┴┐  ┌─┴─┐
-1    5   8
-    ┌┴┐ ┌┴─┐
-    4   7 10
-```
-### Custom comparsion function
-#### Inserting tuples, descending order by first field
+
+## Sorted list of dates
+
+Let's create an ascending list of `DateTime` values.
+
 ```elixir
-tree = AVLTree.new(fn {ka, _}, {kb, _} -> ka > kb end)
-# #AVLTree<size: 0, height: 0>
-
-tree = Enum.into([{2, "val 2"}, {3, "val 3"}, {1, "val 1"}], tree)
-# #AVLTree<size: 3, height: 2>
-
-Enum.to_list(tree) # [{3, "val 3"}, {2, "val 2"}, {1, "val 1"}]
+iex> tree = AVLTree.new(fn a, b -> DateTime.compare(a, b) == :lt end)
+iex> [
+...>   ~U[2020-02-03 01:01:01Z],
+...>   ~U[2020-01-01 01:01:01Z],
+...>   ~U[2019-10-10 02:11:01Z],
+...>   ~U[2020-01-01 01:01:02Z]
+...> ] |> Enum.into(tree)
+#AVLTree<[~U[2019-10-10 02:11:01Z], ~U[2020-01-01 01:01:01Z], ~U[2020-01-01 01:01:02Z], ~U[2020-02-03 01:01:01Z]]>
 ```
-#### Inserting values with duplicate key field
+
+## AVLTree as a map.
+
+If you use a key-value pairs as elements, `AVLTree` can work as a map:
+
+Create a tree
+
 ```elixir
-tree = AVLTree.put_lower(tree, {2, "val 2.1"})
-#AVLTree<size: 4, height: 3>
+tree = AVLTree.new(fn {a, _}, {b, _} -> a < b end)
+```
 
-Enum.to_list(tree)
-# [{3, "val 3"}, {2, "val 2.1"}, {2, "val 2"}, {1, "val 1"}]
+Insert key-value pairs:
 
-tree = AVLTree.put_upper(tree, {2, "val 2.2"})
-#AVLTree<size: 5, height: 3>
+```elixir
+tree =
+    tree
+    |> AVLTree.put({:a, "first value"})
+    |> AVLTree.put({:c, "third value"})
+    |> AVLTree.put({:b, "second value"})
+```
 
-Enum.to_list(tree)
-# [{3, "val 3"}, {2, "val 2.1"}, {2, "val 2"}, {2, "val 2.2"}, {1, "val 1"}]
+or
+
+```elixir
+    tree =
+      [a: "first value", c: "third value", b: "second value"]
+      |> Enum.into(tree)
+```
+
+Retrieve element by key. We can use anything as a value since comparison function cares only about keys.
+
+```elixir
+AVLTree.get(tree, {:b, nil}) # {:b, "second value"}
+```
+
+Delete element:
+
+```elixir
+AVLTree.delete(tree, {:b, nil}) # #AVLTree<[a: "first value", c: "third value"]>
+```
+
+Benefits? Elements are always ordered by keys. Custom comparison function.
+
+## Performance
+
+All inserts, removes and searches in general has complexity of `Ο(lg(n))`.
+
+This implementation is about 4-5 times slower than `MapSet`.
+
+To run benchmark use:
+
+```shell
+mix run bench/run.exs
 ```

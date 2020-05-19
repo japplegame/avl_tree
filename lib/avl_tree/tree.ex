@@ -1,69 +1,158 @@
 defmodule AVLTree do
   @moduledoc """
+
   Pure Elixir [AVL tree](https://en.wikipedia.org/wiki/AVL_tree) implementation.
 
   This data structure is very similar to `MapSet`, but unlike the latter,
-  elements in the AVL tree are always sorted in ascending or descending order.
+  elements in the `AVLTree` are always sorted in ascending or descending order.
 
-  In addition (thanks to custom sorting), the AVL tree can perform like a sorted map.
+  To sort items, `AVLTree` uses a comparison function that looks like:
 
-  `AVLTree` can store duplicate values.
-  It is important to understand that duplicate values are not necessarily the same.
+  `less(a, b) :: boolean`
 
-  Elements `a` and `b` are considered equal if they satisfy the following condition:
+  This function returns `true` if element `a` must be placed strictly before element `b`, otherwise it returns false.
 
-  `f(a, b) == false and f(b, a) == false`, where `f(x, y)` is ordering function
+  `AVLTree` can store duplicate elements.
+  It is important to understand that duplicate elements are not necessarily the same.
 
-  For example, if the ordering function is `fn {a, _}, {b, _} -> a < b end`,
-  then the elements `{1, 10}` and `{1, 20}` will be considered equal, although they are not actually equal.
+  Values `a` and `b` are considered equal if they satisfy the following condition:
 
-  By default, ordering function for `AVLTree` is `Kernel.</2`.
+  `less(a, b) == false and less(b, a) == false`, where `less(x, y)` is comparison function
+
+  For example, if the comparison function is `fn {a, _}, {b, _} -> a < b end`,
+  then the elements `{1, 10}` and `{1, 20}` are considered equal, although actually they aren't.
+
+  By default, comparison function is `Kernel.</2`.
 
   ## Features
 
-  - custom ordering function;
+  - custom comparison function;
   - support for duplicate elements;
-  - `Collectable`, `Enumerable`, `Inspect`, `String.Chars` protocols;
-  - human readable visualization.
+  - `Collectable`, `Enumerable`, `Inspect` protocols;
+  - drawing the tree in the console :)
 
-  ## Inserting values
+  ## Basic Usage
 
-  By default, inserted elements will be sorted in ascending order.
-  ```
+  By default, inserted elements are sorted in ascending order:
+
+  ```elixir
   iex> tree = AVLTree.new()
-  #AVLTree<size: 0, height: 0>
+  #AVLTree<[]>
   iex> tree = AVLTree.put(tree, 5)
-  #AVLTree<size: 1, height: 1>
-  iex> tree = [2, 1, 3] |> Enum.into(tree)
-  #AVLTree<size: 4, height: 3>
-  iex> Enum.to_list(tree)
-  [1, 2, 3, 5]
+  iex> tree = AVLTree.put(tree, 2)
+  iex> tree = [1, 3, 6, 4] |> Enum.into(tree)
+  iex> tree
+  #AVLTree<[1, 2, 3, 4, 5, 6]>
   ```
 
-  ## Descending order
+  You can specify ordering when creating a tree:
 
-  ```
-  iex> tree = AVLTree.new(:desc)
-  #AVLTree<size: 0, height: 0>
-  iex> tree = AVLTree.put(tree, 5)
-  #AVLTree<size: 1, height: 1>
-  iex> tree = [2, 1, 3] |> Enum.into(tree)
-  #AVLTree<size: 4, height: 3>
-  iex> Enum.to_list(tree)
-  [5, 3, 2, 1]
+  ```elixir
+  iex> tree1 = AVLTree.new(:asc)
+  iex> tree2 = AVLTree.new(:desc)
+  iex> [4, 2, 1, 3] |> Enum.into(tree1)
+  #AVLTree<[1, 2, 3, 4]>
+  iex> [4, 2, 1, 3] |> Enum.into(tree2)
+  #AVLTree<[4, 3, 2, 1]>
   ```
 
-  ## Custom ordering function
+  Also you can use a custom comparison function.
 
-  Example of a tree with tuples as elements, sorted by the first field
-  ```
+  Example of a tree with tuples as elements, ordered by the first field
+
+  ```elixir
   iex> tree = AVLTree.new(fn {a, _}, {b, _} -> a < b end)
-  #AVLTree<size: 0, height: 0>
-  iex> [{2, "A"}, {3, "B"}, {1, "C"}] |> Enum.into(tree) |> Enum.to_list()
-  [{1, "C"}, {2, "A"}, {3, "B"}]
+  iex> [{2, "A"}, {3, "B"}, {1, "C"}] |> Enum.into(tree)
+  #AVLTree<[{1, "C"}, {2, "A"}, {3, "B"}]>
+  ```
+
+  Checks if the tree contains a value
+
+  ```elixir
+  iex> tree = [5, 2, 1, 3] |> Enum.into(AVLTree.new())
+  iex> AVLTree.member?(tree, 2)
+  true
+  ```
+
+  `AVLTree` fully supports `Enumerable` protocol
+
+  ```elixir
+  iex> tree = [4, 2, 1, 3] |> Enum.into(AVLTree.new())
+  iex> Enum.to_list(tree)
+  [1, 2, 3, 4]
+  iex> Enum.sum(tree)
+  10
+  ```
+
+  ## Sorted list of dates
+
+  Let's create an ascending list of `DateTime` values.
+
+  ```elixir
+  iex> tree = AVLTree.new(fn a, b -> DateTime.compare(a, b) == :lt end)
+  iex> [
+  ...>   ~U[2020-02-03 01:01:01Z],
+  ...>   ~U[2020-01-01 01:01:01Z],
+  ...>   ~U[2019-10-10 02:11:01Z],
+  ...>   ~U[2020-01-01 01:01:02Z]
+  ...> ] |> Enum.into(tree)
+  #AVLTree<[~U[2019-10-10 02:11:01Z], ~U[2020-01-01 01:01:01Z], ~U[2020-01-01 01:01:02Z], ~U[2020-02-03 01:01:01Z]]>
+  ```
+
+  ## AVLTree as a map.
+
+  If you use a key-value pairs as elements, `AVLTree` can work as a map:
+
+  Create a tree
+
+  ```elixir
+  tree = AVLTree.new(fn {a, _}, {b, _} -> a < b end)
+  ```
+
+  Insert key-value pairs:
+
+  ```elixir
+  tree =
+      tree
+      |> AVLTree.put({:a, "first value"})
+      |> AVLTree.put({:c, "third value"})
+      |> AVLTree.put({:b, "second value"})
+  ```
+
+  or
+
+  ```elixir
+      tree =
+        [a: "first value", c: "third value", b: "second value"]
+        |> Enum.into(tree)
+  ```
+
+  Retrieve element by key. We can use anything as a value since comparison function cares only about keys.
+
+  ```elixir
+  AVLTree.get(tree, {:b, nil}) # {:b, "second value"}
+  ```
+
+  Delete element:
+
+  ```elixir
+  AVLTree.delete(tree, {:b, nil}) # #AVLTree<[a: "first value", c: "third value"]>
+  ```
+
+  Benefits? Elements are always ordered by keys. Custom comparison function.
+
+  ## Performance
+
+  All inserts, removes and searches in general has complexity of `Ο(lg(n))`.
+
+  This implementation is about 4-5 times slower than `MapSet`.
+
+  To run benchmark use:
+
+  ```shell
+  mix run bench/run.exs
   ```
   """
-  require __MODULE__.Node
   alias __MODULE__.Node
 
   defstruct root: nil, size: 0, less: &Kernel.</2
@@ -72,8 +161,8 @@ defmodule AVLTree do
   Creates a new tree with default ascending order.
 
   ```
-  iex> [3, 1, 4, 2] |> Enum.into(AVLTree.new()) |> Enum.to_list()
-  [1, 2, 3, 4]
+  iex> [3, 1, 4, 2] |> Enum.into(AVLTree.new())
+  #AVLTree<[1, 2, 3, 4]>
   ```
   """
   @spec new() :: t()
@@ -82,18 +171,18 @@ defmodule AVLTree do
   end
 
   @doc """
-  Creates a new tree with the given `ordering`.
+  Creates a new tree with the given `ordering` or comparison function.
 
   ```
-  iex> [3, 1, 4, 2] |> Enum.into(AVLTree.new(:asc)) |> Enum.to_list()
-  [1, 2, 3, 4]
-  iex> [3, 1, 4, 2] |> Enum.into(AVLTree.new(:desc)) |> Enum.to_list()
-  [4, 3, 2, 1]
-  iex> [3, 1, 4, 2] |> Enum.into(AVLTree.new(fn a, b -> a > b end)) |> Enum.to_list()
-  [4, 3, 2, 1]
+  iex> [3, 1, 4, 2] |> Enum.into(AVLTree.new(:asc))
+  #AVLTree<[1, 2, 3, 4]>
+  iex> [3, 1, 4, 2] |> Enum.into(AVLTree.new(:desc))
+  #AVLTree<[4, 3, 2, 1]>
+  iex> [3, 1, 4, 2] |> Enum.into(AVLTree.new(fn a, b -> a > b end))
+  #AVLTree<[4, 3, 2, 1]>
   ```
   """
-  @spec new(:asc | :desc | (value(), value() -> boolean())) :: t()
+  @spec new(:asc | :desc | less()) :: t()
   def new(ordering) when is_function(ordering) do
     %__MODULE__{less: ordering}
   end
@@ -107,87 +196,135 @@ defmodule AVLTree do
   end
 
   @doc """
-  Retrieves an element equal to `value`.
-
-  Returns `nil` if nothing was found.
+  Returns height of the tree.
 
   ```
-  iex> tree = AVLTree.new(fn {a, _}, {b, _} -> a < b end)
-  #AVLTree<size: 0, height: 0>
-  iex> tree = [a: "A", c: "C", d: "D", b: "B"] |> Enum.into(tree)
-  #AVLTree<size: 4, height: 3>
-  iex> AVLTree.get(tree, {:c, nil})
-  {:c, "C"}
-  iex> AVLTree.get(tree, {10, nil})
-  nil
+  iex> tree = [5, 9, 3, 8, 1, 6, 7] |> Enum.into(AVLTree.new())
+  #AVLTree<[1, 3, 5, 6, 7, 8, 9]>
+  iex> AVLTree.height(tree)
+  4
   ```
-
   """
-  @spec get(t(), term()) :: value() | nil
-  def get(%__MODULE__{root: root, less: less}, value) do
-    Node.get(root, value, less)
+  @spec height(t()) :: integer()
+  def height(%__MODULE__{root: root}) do
+    Node.height(root)
+  end
+
+  @doc """
+  Returns the number of elements in the tree
+
+  ```
+  iex> tree = [5, 9, 3, 8, 1, 6, 7] |> Enum.into(AVLTree.new())
+  #AVLTree<[1, 3, 5, 6, 7, 8, 9]>
+  iex> AVLTree.size(tree)
+  7
+  ```
+  """
+  @spec size(t()) :: integer()
+  def size(%__MODULE__{size: size}) do
+    size
   end
 
   @doc """
   Retrieves an element equal to `value`.
 
-  Returns `defailt` if nothing was found.
+  If the tree contains more than one element equal to `value`, retrieves one of them. It is undefined which one.
+
+  Returns `defailt` if nothing is found.
 
   ```
   iex> tree = AVLTree.new(fn {a, _}, {b, _} -> a < b end)
-  #AVLTree<size: 0, height: 0>
+  #AVLTree<[]>
   iex> tree = [a: "A", c: "C", d: "D", b: "B"] |> Enum.into(tree)
-  #AVLTree<size: 4, height: 3>
+  #AVLTree<[a: "A", b: "B", c: "C", d: "D"]>
   iex> AVLTree.get(tree, {:c, nil}, :error)
   {:c, "C"}
-  iex> AVLTree.get(tree, {10, nil}, :error)
+  iex> AVLTree.get(tree, {:e, nil}, :error)
   :error
   ```
   """
-  @spec get(t(), term(), term()) :: value()
-  def get(%__MODULE__{root: root, less: less}, value, default) do
-    case Node.get(root, value, less) do
-      nil -> default
-      value -> value
-    end
+  @spec get(t(), value(), term()) :: value() | term()
+  def get(%__MODULE__{root: root, less: less}, value, default \\ nil) do
+    Node.get(root, value, default, less)
   end
 
   @doc """
-  Retrieves the lowest value.
+  Retrieves the first value in the tree.
+
+  Returns `default` if the tree is empty.
 
   ```
   iex> tree = [3, 2, 4, 6] |> Enum.into(AVLTree.new())
-  #AVLTree<size: 4, height: 3>
-  iex> AVLTree.get_lower(tree)
+  #AVLTree<[2, 3, 4, 6]>
+  iex> AVLTree.get_first(tree)
   2
   ```
   """
-  @spec get_lower(t()) :: value()
-  def get_lower(%__MODULE__{root: root}) do
-    Node.get_lower(root)
+  @spec get_first(t(), term()) :: value() | term()
+  def get_first(%__MODULE__{root: root}, default \\ nil) do
+    Node.get_first(root, default)
   end
 
   @doc """
-  Retrieves the uppest value.
+  Retrieves the last value in the tree.
+
+  Returns `default` if the tree is empty.
 
   ```
   iex> tree = [3, 2, 4, 6] |> Enum.into(AVLTree.new())
-  #AVLTree<size: 4, height: 3>
-  iex> AVLTree.get_upper(tree)
+  #AVLTree<[2, 3, 4, 6]>
+  iex> AVLTree.get_last(tree)
   6
   ```
   """
-  @spec get_upper(t()) :: value()
-  def get_upper(%__MODULE__{root: root}) do
-    Node.get_upper(root)
+  @spec get_last(t(), term()) :: value() | term()
+  def get_last(%__MODULE__{root: root}, default \\ nil) do
+    Node.get_last(root, default)
   end
 
   @doc """
-  Checks if `avl_tree` contains an element equal to `value`
+  Retrieves an element equal to `value`.
+
+  If the tree contains more than one element equal to `value`, retrieves the first of them
+
+  Returns `default` if nothing is found.
+
+  ```
+  iex> tree = [b: 21, a: 1, b: 22, c: 3, b: 23] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
+  #AVLTree<[a: 1, b: 21, b: 22, b: 23, c: 3]>
+  iex> AVLTree.get_lower(tree, {:b, nil})
+  {:b, 21}
+  ```
+  """
+  @spec get_lower(t(), value(), term()) :: value() | term()
+  def get_lower(%__MODULE__{root: root, less: less}, value, default \\ nil) do
+    Node.get_lower(root, value, default, less)
+  end
+
+  @doc """
+  Retrieves an element equal to `value`.
+
+  If the tree contains more than one element equal to `value`, retrieves the last of them
+
+  Returns `default` if nothing is found.
+
+  ```
+  iex> tree = [b: 21, a: 1, b: 22, c: 3, b: 23] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
+  #AVLTree<[a: 1, b: 21, b: 22, b: 23, c: 3]>
+  iex> AVLTree.get_upper(tree, {:b, nil})
+  {:b, 23}
+  ```
+  """
+  @spec get_upper(t(), value(), term()) :: value() | term()
+  def get_upper(%__MODULE__{root: root, less: less}, value, default \\ nil),
+    do: Node.get_upper(root, value, default, less)
+
+  @doc """
+  Checks if the tree contains an element equal to `value`.
 
   ```
   iex> tree = [3, 2, 4, 6] |> Enum.into(AVLTree.new())
-  #AVLTree<size: 4, height: 3>
+  #AVLTree<[2, 3, 4, 6]>
   iex> AVLTree.member?(tree, 4)
   true
   iex> AVLTree.member?(tree, 1)
@@ -195,22 +332,23 @@ defmodule AVLTree do
   ```
   """
   @spec member?(t(), term()) :: boolean()
-  def member?(%__MODULE__{root: root, less: less}, value) do
-    Node.get(root, value, less) != nil
-  end
+  def member?(%__MODULE__{root: root, less: less}, value), do: Node.member?(root, value, less)
 
   @doc """
-  Puts the given `value` in `avl_tree` with duplicate replacement.
+  Puts the given `value` in the tree.
+
+  If the tree already contains elements equal to `value`, replaces one of them. It is undefined which one.
 
   ```
   iex> tree = [b: 2, a: 1, c: 3] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
-  #AVLTree<size: 3, height: 2>
-  iex> AVLTree.put(tree, {:d, 4}) |> Enum.to_list()
-  [a: 1, b: 2, c: 3, d: 4]
-  iex> AVLTree.put(tree, {:a, 11}) |> Enum.to_list()
-  [a: 11, b: 2, c: 3]
+  #AVLTree<[a: 1, b: 2, c: 3]>
+  iex> AVLTree.put(tree, {:d, 4})
+  #AVLTree<[a: 1, b: 2, c: 3, d: 4]>
+  iex> AVLTree.put(tree, {:a, 11})
+  #AVLTree<[a: 11, b: 2, c: 3]>
   ```
   """
+  @spec put(t(), value()) :: t()
   def put(%__MODULE__{root: root, size: size, less: less} = avl_tree, value) do
     case Node.put(root, value, less) do
       {:update, root} -> %{avl_tree | root: root}
@@ -219,66 +357,70 @@ defmodule AVLTree do
   end
 
   @doc """
-  Puts the given `value` in `avl_tree` without replacing duplicates, in the reverse insertion order.
+  Puts the given `value` in the tree.
+
+  If the tree already contains elements equal to `value`, inserts `value` before them.
 
   ```
-  iex> tree = [b: 2, a: 1, c: 3] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
-  #AVLTree<size: 3, height: 2>
-  iex> (tree = AVLTree.put(tree, {:d, 4})) |> Enum.to_list()
-  [a: 1, b: 2, c: 3, d: 4]
-  iex> (tree = AVLTree.put_lower(tree, {:a, 2})) |> Enum.to_list()
-  [a: 2, a: 1, b: 2, c: 3, d: 4]
-  iex> (tree = AVLTree.put_lower(tree, {:a, 1})) |> Enum.to_list()
-  [a: 1, a: 2, a: 1, b: 2, c: 3, d: 4]
-  iex> AVLTree.put_lower(tree, {:b, 3}) |> Enum.to_list()
-  [a: 1, a: 2, a: 1, b: 3, b: 2, c: 3, d: 4]
+  iex> tree = [b: 21, a: 11, d: 41, c: 31] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
+  #AVLTree<[a: 11, b: 21, c: 31, d: 41]>
+  iex> tree = AVLTree.put_lower(tree, {:a, 12})
+  #AVLTree<[a: 12, a: 11, b: 21, c: 31, d: 41]>
+  iex> tree = AVLTree.put_lower(tree, {:b, 22})
+  #AVLTree<[a: 12, a: 11, b: 22, b: 21, c: 31, d: 41]>
+  iex> AVLTree.put_lower(tree, {:d, 42})
+  #AVLTree<[a: 12, a: 11, b: 22, b: 21, c: 31, d: 42, d: 41]>
   ```
   """
+  @spec put_lower(t(), value()) :: t()
   def put_lower(%__MODULE__{root: root, size: size, less: less} = avl_tree, value) do
     %{avl_tree | root: Node.put_lower(root, value, less), size: size + 1}
   end
 
   @doc """
-  Puts the given `value` in `avl_tree` without replacing duplicates, in the insertion order.
+  Puts the given `value` in the tree.
 
+  If the tree already contains elements equal to `value`, inserts `value` after them.
   ```
-  iex> tree = [b: 2, a: 1, c: 3] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
-  #AVLTree<size: 3, height: 2>
-  iex> (tree = AVLTree.put(tree, {:d, 4})) |> Enum.to_list()
-  [a: 1, b: 2, c: 3, d: 4]
-  iex> (tree = AVLTree.put_upper(tree, {:a, 2})) |> Enum.to_list()
-  [a: 1, a: 2, b: 2, c: 3, d: 4]
-  iex> (tree = AVLTree.put_upper(tree, {:a, 1})) |> Enum.to_list()
-  [a: 1, a: 2, a: 1, b: 2, c: 3, d: 4]
-  iex> AVLTree.put_upper(tree, {:b, 3}) |> Enum.to_list()
-  [a: 1, a: 2, a: 1, b: 2, b: 3, c: 3, d: 4]
+  iex> tree = [b: 21, a: 11, d: 41, c: 31] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
+  #AVLTree<[a: 11, b: 21, c: 31, d: 41]>
+  iex> tree = AVLTree.put_upper(tree, {:a, 12})
+  #AVLTree<[a: 11, a: 12, b: 21, c: 31, d: 41]>
+  iex> tree = AVLTree.put_upper(tree, {:b, 22})
+  #AVLTree<[a: 11, a: 12, b: 21, b: 22, c: 31, d: 41]>
+  iex> AVLTree.put_upper(tree, {:d, 42})
+  #AVLTree<[a: 11, a: 12, b: 21, b: 22, c: 31, d: 41, d: 42]>
   ```
 
   `Enum.into/2` uses `put_upper/2`:
 
   ```
-  iex> [a: 1, c: 3, a: 3, b: 2, a: 2] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end)) |> Enum.to_list()
-  [a: 1, a: 3, a: 2, b: 2, c: 3]
+  iex> [a: 11, c: 31, a: 12, b: 21, a: 13] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end)) |> Enum.to_list()
+  [a: 11, a: 12, a: 13, b: 21, c: 31]
   ```
   """
+  @spec put_upper(t(), value()) :: t()
   def put_upper(%__MODULE__{root: root, size: size, less: less} = avl_tree, value) do
     %{avl_tree | root: Node.put_upper(root, value, less), size: size + 1}
   end
 
   @doc """
-  Deletes element equal to the given `value`.
+  Deletes an element equal to the given `value`.
 
-  If element was not found, returns tree unchanged.
+  If the tree contains more than one element equal to `value`, deletes one of them. It is undefined which one.
+
+  If no element is found, returns the tree unchanged.
 
   ```
   iex> tree = [3, 2, 1, 4] |> Enum.into(AVLTree.new())
-  #AVLTree<size: 4, height: 3>
-  iex> AVLTree.delete(tree, 3) |> Enum.to_list()
-  [1, 2, 4]
-  iex> AVLTree.delete(tree, 5) |> Enum.to_list()
-  [1, 2, 3, 4]
+  #AVLTree<[1, 2, 3, 4]>
+  iex> AVLTree.delete(tree, 3)
+  #AVLTree<[1, 2, 4]>
+  iex> AVLTree.delete(tree, 5)
+  #AVLTree<[1, 2, 3, 4]>
   ```
   """
+  @spec delete(t(), value()) :: t()
   def delete(%__MODULE__{root: root, size: size, less: less} = avl_tree, value) do
     case Node.delete(root, value, less) do
       {true, a} -> %{avl_tree | root: a, size: size - 1}
@@ -287,56 +429,92 @@ defmodule AVLTree do
   end
 
   @doc """
-  Deletes existing element equal to the given `value`.
+  Deletes an element equal to the given `value`.
 
-  If the element was deleted, returns `{:ok, new_tree}`, otherwise `:error`
+  If the tree contains more than one element equal to `value`, deletes the first of them.
+
+  If no element is found, returns the tree unchanged.
 
   ```
-  iex> tree = [3, 2, 1, 4] |> Enum.into(AVLTree.new())
-  #AVLTree<size: 4, height: 3>
-  iex> {:ok, new_tree} = AVLTree.delete_exist(tree, 3)
-  iex> Enum.to_list(new_tree)
-  [1, 2, 4]
-  iex> AVLTree.delete_exist(tree, 5)
-  :error
+  iex> tree = [b: 21, a: 1, b: 22, c: 3, b: 23] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
+  #AVLTree<[a: 1, b: 21, b: 22, b: 23, c: 3]>
+  iex> AVLTree.delete_lower(tree, {:b, nil})
+  #AVLTree<[a: 1, b: 22, b: 23, c: 3]>
   ```
   """
-  def delete_exist(%__MODULE__{root: root, size: size, less: less} = avl_tree, value) do
-    case Node.delete(root, value, less) do
-      {true, a} -> {:ok, %{avl_tree | root: a, size: size - 1}}
-      {false, _} -> :error
+  @spec delete_lower(t(), value()) :: {:ok, t()} | :error
+  def delete_lower(%__MODULE__{root: root, size: size, less: less} = avl_tree, value) do
+    case Node.delete_lower(root, value, less) do
+      {true, a} -> %{avl_tree | root: a, size: size - 1}
+      {false, _} -> avl_tree
     end
   end
 
+  @doc """
+  Deletes an element equal to the given `value`.
+
+  If the tree contains more than one element equal to `value`, deletes the last of them.
+
+  If no element is found, returns the tree unchanged.
+
+  ```
+  iex> tree = [b: 21, a: 1, b: 22, c: 3, b: 23] |> Enum.into(AVLTree.new(fn {a, _}, {b, _} -> a < b end))
+  #AVLTree<[a: 1, b: 21, b: 22, b: 23, c: 3]>
+  iex> AVLTree.delete_upper(tree, {:b, nil})
+  #AVLTree<[a: 1, b: 21, b: 22, c: 3]>
+  ```
+  """
+  @spec delete_upper(t(), value()) :: {:ok, t()} | :error
+  def delete_upper(%__MODULE__{root: root, size: size, less: less} = avl_tree, value) do
+    case Node.delete_upper(root, value, less) do
+      {true, a} -> %{avl_tree | root: a, size: size - 1}
+      {false, _} -> avl_tree
+    end
+  end
+
+  @doc """
+  Displays the tree in human readable form.
+
+  ```
+  iex> tree = 1..10 |> Enum.into(AVLTree.new())
+  #AVLTree<[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]>
+  iex> IO.puts AVLTree.view(tree)
+  ```
+  ```shell
+     4
+   ┌─┴───┐
+   2     8
+  ┌┴┐  ┌─┴─┐
+  1 3  6   9
+      ┌┴┐ ┌┴─┐
+      5 7   10
+  ```
+  """
+  @spec view(t()) :: String.t()
+  def view(%__MODULE__{root: root}) do
+    Node.view(root)
+  end
+
   defimpl Enumerable do
+    import AVLTree.Node, only: [iter_lower: 1, next: 1, value: 1]
+
     def reduce(%AVLTree{root: root}, {:cont, acc}, fun) do
-      reduce([root], {:cont, acc}, fun)
+      iter_lower(root) |> next() |> reduce({:cont, acc}, fun)
     end
 
-    def reduce(_, {:halt, acc}, _) do
-      {:halted, acc}
-    end
+    def reduce(iter, {state, acc}, fun) do
+      case state do
+        :halt ->
+          {:halted, acc}
 
-    def reduce(path, {:suspend, acc}, fun) do
-      {:suspended, acc, &reduce(path, &1, fun)}
-    end
+        :suspend ->
+          {:suspended, acc, &reduce(iter, &1, fun)}
 
-    def reduce(path, {:cont, acc}, fun) do
-      case path do
-        [] ->
-          {:done, acc}
-
-        [nil | p] ->
-          reduce(p, {:cont, acc}, fun)
-
-        [{_v, _h, l, _r} = c | p] ->
-          reduce([l, {:left, c} | p], {:cont, acc}, fun)
-
-        [{:left, {v, _h, _l, r}} | p] ->
-          reduce([r, :right | p], fun.(v, acc), fun)
-
-        [:right | p] ->
-          reduce(p, {:cont, acc}, fun)
+        :cont ->
+          case iter do
+            :none -> {:done, acc}
+            {e, iter} -> reduce(next(iter), fun.(value(e), acc), fun)
+          end
       end
     end
 
@@ -368,82 +546,12 @@ defmodule AVLTree do
 
   @opaque t() :: %__MODULE__{}
   @type value() :: term()
+  @type less() :: (value(), value() -> boolean())
 end
 
 defimpl Inspect, for: AVLTree do
-  def inspect(%AVLTree{root: root, size: size}, _) do
-    "#AVLTree<size: #{size}, height: #{AVLTree.Node.height(root)}>"
-  end
-end
-
-defimpl String.Chars, for: AVLTree do
-  defp merge(_, _, [], []) do
-    []
-  end
-
-  defp merge(lw, rw, [], [rh | rt]) do
-    [
-      String.duplicate(" ", lw) <> " " <> String.pad_trailing(rh, rw)
-      | merge(lw, rw, [], rt)
-    ]
-  end
-
-  defp merge(lw, rw, [lh | lt], []) do
-    [
-      String.pad_leading(lh, lw) <> " " <> String.duplicate(" ", rw)
-      | merge(lw, rw, lt, [])
-    ]
-  end
-
-  defp merge(lw, rw, [lh | lt], [rh | rt]) do
-    [
-      String.pad_leading(lh, lw) <> " " <> String.pad_trailing(rh, rw)
-      | merge(lw, rw, lt, rt)
-    ]
-  end
-
-  defp node_view(nil) do
-    {1, 0, [" "]}
-  end
-
-  defp node_view({v, _, nil, nil}) do
-    v_str = inspect(v)
-    v_width = String.length(v_str)
-    {v_width, div(v_width, 2), [v_str]}
-  end
-
-  defp node_view({v, _h, l, r}) do
-    v_str = inspect(v)
-    v_width = String.length(v_str)
-    v_left_width = div(v_width, 2)
-    v_right_width = v_width - v_left_width - 1
-
-    {l_width, l_head, l_canvas} = node_view(l)
-    {r_width, r_head, r_canvas} = node_view(r)
-
-    left_width = max(v_left_width, l_width)
-    right_width = max(v_right_width, r_width)
-
-    width = left_width + right_width + 1
-
-    left_connector =
-      String.pad_leading("┌" <> String.duplicate("─", l_width - l_head - 1), left_width)
-
-    right_connector = String.pad_trailing(String.duplicate("─", r_head) <> "┐", right_width)
-
-    {
-      width,
-      left_width,
-      [
-        String.pad_trailing(String.pad_leading(v_str, left_width + v_right_width + 1), width),
-        left_connector <> "┴" <> right_connector
-        | merge(left_width, right_width, l_canvas, r_canvas)
-      ]
-    }
-  end
-
-  def to_string(%AVLTree{root: root}) do
-    {_, _, canvas} = node_view(root)
-    Enum.join(canvas, "\n")
+  def inspect(%AVLTree{} = tree, opts) do
+    cnt = tree |> Enum.take(opts.limit + 1) |> Enum.to_list() |> inspect
+    "#AVLTree<#{cnt}>"
   end
 end
