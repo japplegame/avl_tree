@@ -8,11 +8,16 @@ defmodule Bench do
     set = Enum.reduce(data, MapSet.new(), fn x, set -> MapSet.put(set, x) end)
     tree = Enum.reduce(data, AVLTree.new(), fn x, tree -> AVLTree.put(tree, x) end)
     gb_set = Enum.reduce(data, :gb_sets.new(), fn x, set -> :gb_sets.add_element(x, set) end)
+    ets = :ets.new(:tree, [:ordered_set, :public])
+    Enum.each(data, &:ets.insert(ets, {&1, &1}))
+
+    wordsize = :erlang.system_info(:wordsize)
 
     IO.puts("Flat size (bytes):")
-    IO.puts("MapSet:  #{:erts_debug.flat_size(set) - size}")
-    IO.puts("AVLTree: #{:erts_debug.flat_size(tree) - size}")
-    IO.puts("gb_set: #{:erts_debug.flat_size(gb_set) - size}")
+    IO.puts("MapSet:            #{(:erts_debug.flat_size(set) - size) * wordsize}")
+    IO.puts("AVLTree:           #{(:erts_debug.flat_size(tree) - size) * wordsize}")
+    IO.puts("gb_set:            #{(:erts_debug.flat_size(gb_set) - size) * wordsize}")
+    IO.puts("ETS (ordered_Set): #{:ets.info(ets, :memory) * wordsize}")
 
     gen_element = fn _ -> :rand.uniform(size * 2) end
 
@@ -20,9 +25,10 @@ defmodule Bench do
 
     Benchee.run(
       %{
-        "MapSet SEARCH" => fn x -> MapSet.member?(set, x) end,
-        "AVLTree SEARCH" => fn x -> AVLTree.member?(tree, x) end,
-        "gb_set SEARCH" => fn x -> :gb_sets.is_member(x, gb_set) end
+        "MapSet SEARCH" => &MapSet.member?(set, &1),
+        "AVLTree SEARCH" => &AVLTree.member?(tree, &1),
+        "gb_set SEARCH" => &:gb_sets.is_member(&1, gb_set),
+        "ETS (ordered set) SEARCH" => &:ets.lookup(ets, &1)
       },
       warmup: 2,
       before_scenario: &reset_rand/1,
@@ -38,9 +44,10 @@ defmodule Bench do
 
     Benchee.run(
       %{
-        "MapSet INSERT" => fn x -> MapSet.put(set, x) end,
-        "AVLTree INSERT" => fn x -> AVLTree.put(tree, x) end,
-        "gb_set INSERT" => fn x -> :gb_sets.add_element(x, gb_set) end
+        "MapSet INSERT" => &MapSet.put(set, &1),
+        "AVLTree INSERT" => &AVLTree.put(tree, &1),
+        "gb_set INSERT" => &:gb_sets.add_element(&1, gb_set),
+        "ETS (ordered set) INSERT" => &:ets.insert(ets, {&1, &1})
       },
       warmup: 2,
       before_scenario: &reset_rand/1,
@@ -56,9 +63,10 @@ defmodule Bench do
 
     Benchee.run(
       %{
-        "MapSet DELETE" => fn x -> MapSet.delete(set, x) end,
-        "AVLTree DELETE" => fn x -> AVLTree.delete(tree, x) end,
-        "gb_set DELETE" => fn x -> :gb_sets.delete_any(x, gb_set) end
+        "MapSet DELETE" => &MapSet.delete(set, &1),
+        "AVLTree DELETE" => &AVLTree.delete(tree, &1),
+        "gb_set DELETE" => &:gb_sets.delete_any(&1, gb_set),
+        "ETS (ordered set) DELETE" => &:ets.delete(ets, &1)
       },
       warmup: 2,
       before_scenario: &reset_rand/1,
